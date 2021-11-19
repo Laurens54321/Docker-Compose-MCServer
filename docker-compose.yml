@@ -1,0 +1,67 @@
+version: "3"
+
+services:
+  mc:
+    image: itzg/minecraft-server
+    ports:
+      - "25565:25565"
+    command: export-for-prometheus
+    environment:
+      EULA: "true"
+      VERSION: "1.17.1"
+      TYPE: FABRIC
+      ENABLE_ROLLING_LOGS: "true"
+      GATHER_INTERVAL: 10s
+      GATHER_TELEGRAF_ADDRESS: telegraf:8094
+      #MEMORY: "4G"
+      #SERVER_IP: 0.0.0.0
+      OVERRIDE_SERVER_PROPERTIES: "true"
+      STOP_SERVER_ANNOUNCE_DELAY: "Server will be automatically restarted by tocker"
+      
+      SERVER_NAME: "Den Alibaba"
+      ALLOW_FLIGHT: "false"
+      MAX_PLAYERS: 10
+      ENABLE_RCON: "true"
+      RCON_PASSWORD: "mc2021"
+      OPS: "L0renz00"
+      
+    tty: true
+    stdin_open: true
+    #restart: unless-stopped
+    volumes:
+      # attach a directory relative to the directory containing this compose file
+      - mc:/data
+
+  backups:
+    image: itzg/mc-backup
+    
+    environment:
+      BACKUP_INTERVAL: "1d"
+      INITIAL_DELAY: "300"
+      
+
+      # instead of network_mode below, could declare RCON_HOST
+      # RCON_HOST: mc
+    depends_on:
+      - mc
+    volumes:
+      # mount the same volume used by server, but read-only
+      - mc:/data:ro
+      # use a host attached directory so that it in turn can be backed up
+      # to external/cloud storage
+      - ./mc-backups:/backups
+    # share network namespace with server to simplify rcon access
+    network_mode: "service:mc"
+ 
+volumes:
+  mc:
+    driver: local
+    driver_opts:
+      o: bind
+      type: none
+      device: ./minecraft-data
+  # c:\Users\laure\Desktop\minecraft-spring\minecraft-data
+
+secrets:
+  serversettings:
+    file: ./server.properties
